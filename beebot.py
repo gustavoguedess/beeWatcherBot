@@ -4,10 +4,13 @@ load_dotenv()
 
 BEEBOT_TOKEN = os.getenv("BEEBOT_TOKEN")
 
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, MessageHandler, CallbackContext, Filters, PicklePersistence 
 import logging
+
 from beecrawler import BeeCrawler
+import beepodium
+import judgelinks
 
 beecrawler = BeeCrawler()
 
@@ -18,19 +21,29 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 def start(update: Update, context: CallbackContext):
     context.bot.send_message(chat_id=update.effective_chat.id, text="Bem vindo! Eu sou o Bee Watcher, eu monitoro o desenvolvimento de usuários do BeeCrowd.\nUse /help para saber mais.")
 
-def help(update: Update, context: CallbackContext):
-    text = """
-    Comandos disponíveis:
-    Use /addprofile username1 username2 ... para adicionar um (ou mais) novo perfil.
-    Use /rmprofile username1 username2 ... para remover um (ou mais) perfil.
-    Use /lsprofile para listar os perfil (usuários) cadastrados.
-    Use /ranking para ver o ranking semanal.
-    """
+def help_command(update: Update, context: CallbackContext):
+    text = "🏆 Visualização do Ranking Semanal\n"
+    text += "/ranking\n\n"
+    
+    text += "🔎Visualização de problemas:\n"
+    text += "/problems id1, id2, ...\n"
+    text += "*Atualmente só funciona para questões do Beecrowd, UVa, AtCoder, CodeForces e SPOJ.\n\n"
+
+    text += "📜Gerenciar participantes:\n"
+    text += "/addprofile username1 username2 ... - adiciona um (ou mais) novo perfil.\n"
+    text += "/rmprofile username1 username2 ... - remove um (ou mais) perfil.\n"
+    text += "/lsprofile - lista perfis cadastrados.\n"
+    
     context.bot.send_message(chat_id=update.effective_chat.id, text=text)
 
 
 def addprofile_command(update: Update, context: CallbackContext):
     usernames = list(map(str.lower, context.args))
+    if len(usernames) == 0:
+        context.bot.send_message(chat_id=update.effective_chat.id, text='Nenhum usuário foi informado. Use /addprofile username1 username2 ...')
+        return
+    
+    
     success = []
     already_added = []
     fail = []
@@ -75,6 +88,10 @@ def get_profile(username):
 
 def rmprofile_command(update: Update, context: CallbackContext):
     usernames = list(map(str.lower, context.args))
+    if len(usernames) == 0:
+        context.bot.send_message(chat_id=update.effective_chat.id, text='Nenhum usuário foi informado. Use /rmprofile username1 username2 ...')
+        return
+
     success = []
     fail = []
 
@@ -130,6 +147,7 @@ def get_ranking(profiles):
             profile = {
                 'username': user['username'],
                 'university': user['university'],
+                'avatar': user['avatar'],
                 'old_points': old_points,
                 'new_points': new_points,
                 'growth': growth
@@ -161,7 +179,8 @@ def ranking_command(update: Update, context: CallbackContext):
     elif len(ranking) > 0:
         ranking = get_ranking(profiles)
         text = ranking_text(ranking)
-            
+        imgPodium = beepodium.create_podium(*ranking[:3])
+        context.bot.send_photo(chat_id=update.effective_chat.id, photo=imgPodium)
     context.bot.send_message(chat_id=update.effective_chat.id, text=text)
 
 def searchprofile_command(update: Update, context: CallbackContext):
@@ -176,6 +195,43 @@ def searchprofile_command(update: Update, context: CallbackContext):
         text+=f'{user["points"]} pontos'
     context.bot.send_message(chat_id=update.effective_chat.id, text=text)
 
+def problem_command(update: Update, context: CallbackContext):
+    problems_ids = ''.join(context.args)
+    problems_ids = problems_ids.replace(' ', '')
+    problems_ids = problems_ids.split(',')
+    if len(problems_ids) == 0:
+        text = 'Nenhum problema foi informado. Use /problem problem1'
+        context.bot.send_message(chat_id=update.effective_chat.id, text=text)
+        return
+
+    problems = []
+    fails = []
+    for problem_id in problems_ids:
+        try:
+            problem = judgelinks.get_problem(problem_id)
+        except:
+            problem = None
+
+        if problem:
+            problems.append(problem)
+        else:
+            fails.append(problem_id)
+    if len(fails) == 1:
+        text = f'O problema {fails[0]} não foi encontrado.'
+        context.bot.send_message(chat_id=update.effective_chat.id, text=text)
+    elif len(fails) > 1:
+        text = f'Os problemas {", ".join(fails)} não foram encontrados.'
+        context.bot.send_message(chat_id=update.effective_chat.id, text=text)
+    if len(problems) >= 1:
+        text = 'Problems: \n'
+        keyboard = []
+        for problem in problems:
+            text += f'{problem["id"]} - {problem["title"]}\n'
+            keyboard.append([InlineKeyboardButton(f'{problem["short_id"]} - {problem["title"]}', url=problem["url"])])
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        context.bot.send_message(chat_id=update.effective_chat.id, text=text, reply_markup=reply_markup)
+            
+
 def unknown_command(update: Update, context: CallbackContext):
     context.bot.send_message(chat_id=update.effective_chat.id, text="Desculpe, não entendi o que você quis dizer. Use /help para saber mais.")
 
@@ -189,20 +245,21 @@ def set_command(update: Update, context: CallbackContext):
         import json
         text = json.dumps(context.chat_data['profiles'][user['id']], indent=2)
         context.bot.send_message(chat_id=update.effective_chat.id, text=text)
+
 def create_dispatchers():
     dispatcher = updater.dispatcher
     
     start_handler = CommandHandler('start', start)
     dispatcher.add_handler(start_handler)
 
-    help_handler = CommandHandler('help', help)
+    help_handler = CommandHandler('help', help_command)
     dispatcher.add_handler(help_handler)
 
     
     addprofile_handler = CommandHandler('addprofile', addprofile_command)
     dispatcher.add_handler(addprofile_handler)
 
-    rmprofile_handler = CommandHandler('rmprofile', rmprofile_command)
+    rmprofile_handler = CommandHandler(['rmprofile', 'rmprofiles'], rmprofile_command)
     dispatcher.add_handler(rmprofile_handler)
 
     lsprofile_handler = CommandHandler(['lsprofile','lsprofiles'], lsprofile_command)
@@ -213,6 +270,9 @@ def create_dispatchers():
 
     ranking_handler = CommandHandler('ranking', ranking_command)
     dispatcher.add_handler(ranking_handler)
+
+    problem_handler = CommandHandler(['problem', 'problems'], problem_command)
+    dispatcher.add_handler(problem_handler)
 
     set_handler = CommandHandler('debugset', set_command)
     dispatcher.add_handler(set_handler)

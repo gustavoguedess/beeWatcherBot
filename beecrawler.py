@@ -22,6 +22,7 @@ class BeeCrawler:
         ul = soup.select('ul.pb-information li')
         user_info = {}
         user_info['username'] = soup.select_one('div.pb-username p a').text
+        user_info['avatar'] = soup.select_one('div.pb-avatar img')['src']
 
         for li in ul:
             key, value = li.text.replace('\n','').strip().split(':')
@@ -31,3 +32,33 @@ class BeeCrawler:
         user_info['points'] = int(float(user_info['points'].replace(',','')))
         user_info['id']=id
         return user_info
+
+    def get_problem(self, id_complete:str|int):
+        id_complete = id_complete.replace('uri', 'bee')
+
+        id = id_complete.replace('bee','')
+        if not id.isnumeric():
+            return None
+        id = int(id)
+
+        url = f'https://www.beecrowd.com.br/repository/UOJ_{id}_en.html'
+        response = requests.get(url)
+        if response.status_code != 200:
+            url = f'https://www.beecrowd.com.br/repository/UOJ_{id}.html'
+            response = requests.get(url)
+        if response.status_code != 200:
+            url = f'https://www.beecrowd.com.br/repository/UOJ_{id}_pt.html'
+            response = requests.get(url)
+        if response.status_code != 200:
+            return None
+        soup = BeautifulSoup(response.text, 'html.parser')
+
+        problem = {}
+        problem['judge'] = 'Beecrowd'
+        problem['short_judge'] = 'Bee'
+        problem['id'] = str(id)
+        problem['short_id'] = problem['short_judge'] + ' ' + problem['id']
+        problem['title'] = soup.select_one('h1').text
+        problem['url'] = url
+
+        return problem

@@ -2,5 +2,5 @@ __pycache__
 .vscode
 .env
 
-test_img.py
+test.py
 result.jpg

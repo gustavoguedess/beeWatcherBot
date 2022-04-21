@@ -179,8 +179,8 @@ def ranking_command(update: Update, context: CallbackContext):
     elif len(ranking) > 0:
         ranking = get_ranking(profiles)
         text = ranking_text(ranking)
-        imgPodium = beepodium.create_podium(*ranking[:3])
-        context.bot.send_photo(chat_id=update.effective_chat.id, photo=imgPodium)
+        #imgPodium = beepodium.create_podium(*ranking[:3])
+        #context.bot.send_photo(chat_id=update.effective_chat.id, photo=imgPodium)
     context.bot.send_message(chat_id=update.effective_chat.id, text=text)
 
 def searchprofile_command(update: Update, context: CallbackContext):

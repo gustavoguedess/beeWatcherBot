@@ -27,3 +27,6 @@ class Test_Bee_Crawler_Info(unittest.TestCase):
 
     def test_get_info_valid_points(self):
         self.assertIsInstance(self.resp['points'], int)
+    
+    def test_get_info_valid_avatar(self):
+        self.assertIn('https://www.gravatar.com/avatar', self.resp['avatar'])

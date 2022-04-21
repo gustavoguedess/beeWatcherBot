@@ -1,0 +1,6 @@
+__pycache__
+.vscode
+.env
+
+test_img.py
+result.jpg

@@ -1,8 +1,15 @@
-from dotenv import load_dotenv
 import os 
-load_dotenv()
+import argparse
 
-BEEBOT_TOKEN = os.getenv("BEEBOT_TOKEN")
+arg_parser = argparse.ArgumentParser()
+arg_parser.add_argument('--debug', '-d', help='Debug', action='store_true', default=False)
+args = arg_parser.parse_args()
+
+
+if not args.debug:
+    BEEBOT_TOKEN = os.getenv("BEEBOT_TOKEN")
+else:
+    BEEBOT_TOKEN = os.getenv("BEEBOT_TOKEN_DEBUG")
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, MessageHandler, CallbackContext, Filters, PicklePersistence 
@@ -16,10 +23,17 @@ beecrawler = BeeCrawler()
 
 persistence = PicklePersistence(filename='db/database.json')
 updater = Updater(token=BEEBOT_TOKEN, use_context=True, persistence=persistence)
+job_queue = updater.job_queue
+
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 def start(update: Update, context: CallbackContext):
     context.bot.send_message(chat_id=update.effective_chat.id, text="Bem vindo! Eu sou o Bee Watcher, eu monitoro o desenvolvimento de usuários do BeeCrowd.\nUse /help para saber mais.")
+
+def stop_command(update: Update, context: CallbackContext):
+    text = "Obrigado por usar o Bee Watcher! Até mais!"
+    context.bot.send_message(chat_id=update.effective_chat.id, text=text)
+
 
 def help_command(update: Update, context: CallbackContext):
     text = "🏆 Visualização do Ranking Semanal\n"
@@ -169,7 +183,7 @@ def ranking_text(ranking):
         text+= '\n'
     return text
 
-def ranking_command(update: Update, context: CallbackContext):
+def ranking(chat_id, context, podium=False):
     profiles = context.chat_data.get('profiles', {})
     ranking = get_ranking(profiles)
     if len(profiles) == 0:
@@ -179,9 +193,14 @@ def ranking_command(update: Update, context: CallbackContext):
     elif len(ranking) > 0:
         ranking = get_ranking(profiles)
         text = ranking_text(ranking)
-        #imgPodium = beepodium.create_podium(*ranking[:3])
-        #context.bot.send_photo(chat_id=update.effective_chat.id, photo=imgPodium)
-    context.bot.send_message(chat_id=update.effective_chat.id, text=text)
+        if podium:
+            imgPodium = beepodium.create_podium(*ranking[:3])
+            context.bot.send_photo(chat_id=chat_id, photo=imgPodium)
+    context.bot.send_message(chat_id=chat_id, text=text)
+
+def ranking_command(update: Update, context: CallbackContext):
+    chat_id = update.effective_chat.id
+    ranking(chat_id, context)
 
 def searchprofile_command(update: Update, context: CallbackContext):
     username = ' '.join(context.args).lower()
@@ -246,9 +265,25 @@ def set_command(update: Update, context: CallbackContext):
         text = json.dumps(context.chat_data['profiles'][user['id']], indent=2)
         context.bot.send_message(chat_id=update.effective_chat.id, text=text)
 
+def weekly_ranking(context: CallbackContext):
+    from telegram.ext import ContextTypes, Dispatcher, CallbackContext
+    for chat_id, chat_data in updater.persistence.get_chat_data().items():
+        # create Context Type 
+        contextype = ContextTypes(chat_data=chat_data)
+        # create Dispatcher
+        dispatcher = Dispatcher(updater.bot, update_queue=None, context_types=contextype)
+        # create CallbackContext
+        callback = CallbackContext(dispatcher)
+
+        #dispatcher = updater.dispatcher.add_update_handler_by_chat_id(chat_id)
+        #ranking(chat_id, callback, podium=False)
+
+#job_weekly = job_queue.run_custom()
+#job_test = job_queue.run_repeating(weekly_ranking, interval=100, first=2)
+
 def create_dispatchers():
     dispatcher = updater.dispatcher
-    
+
     start_handler = CommandHandler('start', start)
     dispatcher.add_handler(start_handler)
 
@@ -276,6 +311,9 @@ def create_dispatchers():
 
     set_handler = CommandHandler('debugset', set_command)
     dispatcher.add_handler(set_handler)
+
+    stop_handler = CommandHandler('stop', stop_command)
+    dispatcher.add_handler(stop_handler)
     
     unknown_handler = MessageHandler(Filters.command, unknown_command)
     dispatcher.add_handler(unknown_handler)
@@ -286,3 +324,4 @@ def create_dispatchers():
 create_dispatchers()
 
 updater.start_polling()
+updater.idle()

@@ -25,12 +25,12 @@ def put_place(podium, user, place:int):
     img = open_img_from_url(user['avatar'])
     podium.paste(img, (x,y), get_profile_mask(img.size))
 
-def create_podium(user1, user2, user3):
+def create_podium(user1, user2=None, user3=None):
     imgPodium = Image.open("img/podio.jpg")
 
     put_place(imgPodium, user1, 1)
-    put_place(imgPodium, user2, 2)
-    put_place(imgPodium, user3, 3)
+    if user2: put_place(imgPodium, user2, 2)
+    if user3: put_place(imgPodium, user3, 3)
 
     bio = io.BytesIO()
     bio.name = 'podio_tmp.jpeg'

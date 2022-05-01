@@ -52,6 +52,14 @@ class BeeCrawler:
         user_info['id']=id
         return user_info
 
+    def bulk_profile_info(self, ids:list):
+        users = []
+        for id in ids:
+            user = self.get_profile_info(id)
+            if user:
+                users.append(user)
+        return users
+
     def get_problem(self, id_complete:str|int):
         id_complete = id_complete.replace('uri', 'bee')
 

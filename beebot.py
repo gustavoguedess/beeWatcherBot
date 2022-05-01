@@ -1,5 +1,6 @@
 import os 
 import argparse
+import profile
 
 arg_parser = argparse.ArgumentParser()
 arg_parser.add_argument('--debug', '-d', help='Debug', action='store_true', default=False)
@@ -143,7 +144,7 @@ def lsprofile_command(update: Update, context: CallbackContext):
 def get_ranking(profiles):
     ranking = []
     for code, user in profiles.items():
-        user_new = beecrawler.get_info(code)
+        user_new = beecrawler.get_profile_info(code)
         old_points = user['points']
         new_points = user_new['points']
         growth = new_points - old_points
@@ -173,7 +174,8 @@ def ranking_text(ranking):
         text+= '\n'
     return text
 
-def ranking(chat_id, context, podium=False):
+def ranking_command(update: Update, context: CallbackContext):
+    chat_id = update.effective_chat.id
     profiles = context.chat_data.get('profiles', {})
     ranking = get_ranking(profiles)
     if len(profiles) == 0:
@@ -183,14 +185,8 @@ def ranking(chat_id, context, podium=False):
     elif len(ranking) > 0:
         ranking = get_ranking(profiles)
         text = ranking_text(ranking)
-        if podium:
-            imgPodium = beepodium.create_podium(*ranking[:3])
-            context.bot.send_photo(chat_id=chat_id, photo=imgPodium)
     context.bot.send_message(chat_id=chat_id, text=text)
 
-def ranking_command(update: Update, context: CallbackContext):
-    chat_id = update.effective_chat.id
-    ranking(chat_id, context)
 
 def searchprofile_command(update: Update, context: CallbackContext):
     username = ' '.join(context.args).lower()
@@ -198,7 +194,7 @@ def searchprofile_command(update: Update, context: CallbackContext):
     if len(users_code) == 0:
         text = f'Não encontrei nenhum usuário com o nome {username}'
     else:
-        user = beecrawler.get_info(users_code[0])
+        user = beecrawler.get_profile_info(users_code[0])
         text = f'{user["username"]} '
         text+= f'[{user["university"]}]\n' if user['university'] else '\n'
         text+=f'{user["points"]} pontos'
@@ -259,22 +255,31 @@ def get_command(update:Update, context:CallbackContext):
     text = json.dumps(context.chat_data, indent=2)
     context.bot.send_message(chat_id=update.effective_chat.id, text=text)
 
+def update_ranking(chat_id):
+    dispatcher = updater.dispatcher
+    chat_data = dispatcher.chat_data[chat_id]
+    new_profiles = beecrawler.bulk_profile_info(chat_data['profiles'].keys())
+    for profile in new_profiles:
+        chat_data['profiles'][profile['id']] = profile
+    dispatcher.update_persistence()
 
 def weekly_ranking(context: CallbackContext):
-    from telegram.ext import ContextTypes, Dispatcher, CallbackContext
     for chat_id, chat_data in updater.persistence.get_chat_data().items():
-        # create Context Type 
-        contextype = ContextTypes(chat_data=chat_data)
-        # create Dispatcher
-        dispatcher = Dispatcher(updater.bot, update_queue=None, context_types=contextype)
-        # create CallbackContext
-        callback = CallbackContext(dispatcher)
-
-        #dispatcher = updater.dispatcher.add_update_handler_by_chat_id(chat_id)
-        #ranking(chat_id, callback, podium=False)
-
-#job_weekly = job_queue.run_custom()
-#job_test = job_queue.run_repeating(weekly_ranking, interval=100, first=2)
+        ranking = get_ranking(chat_data['profiles'])
+        if len(ranking) == 0:
+            text = '😴'
+        else:
+            text = ranking_text(ranking)
+            imgPodium = beepodium.create_podium(*ranking[:3])
+            
+            update_ranking(chat_id)
+            context.bot.send_photo(chat_id=chat_id, photo=imgPodium)
+        context.bot.send_message(chat_id=chat_id, text=text)
+        
+def test_command(update: Update, context: CallbackContext):
+    print(update.effective_chat.id)
+    if update.effective_chat.id == 262931805:
+        weekly_ranking(context)
 
 def create_dispatchers():
     dispatcher = updater.dispatcher
@@ -309,6 +314,10 @@ def create_dispatchers():
         dispatcher.add_handler(set_handler)
         get_handler = CommandHandler('get', get_command)
         dispatcher.add_handler(get_handler)
+        
+    test_handler = CommandHandler('test', test_command)
+    dispatcher.add_handler(test_handler)
+
 
     stop_handler = CommandHandler('stop', stop_command)
     dispatcher.add_handler(stop_handler)
@@ -316,10 +325,16 @@ def create_dispatchers():
     unknown_handler = MessageHandler(Filters.command, unknown_command)
     dispatcher.add_handler(unknown_handler)
 
+def create_jobs():
+    from pytz import timezone
+    from datetime import time 
+    job_queue = updater.job_queue
 
-
+    BR_Brasilia = timezone('Brazil/East')
+    job_queue.run_daily(weekly_ranking, days=(4), time=time(hour=17, minute=0, tzinfo=BR_Brasilia))
 
 create_dispatchers()
+create_jobs()
 
 updater.start_polling()
 updater.idle()

@@ -314,7 +314,7 @@ def create_dispatchers():
         dispatcher.add_handler(set_handler)
         get_handler = CommandHandler('get', get_command)
         dispatcher.add_handler(get_handler)
-        
+
     test_handler = CommandHandler('test', test_command)
     dispatcher.add_handler(test_handler)
 
@@ -331,7 +331,7 @@ def create_jobs():
     job_queue = updater.job_queue
 
     BR_Brasilia = timezone('Brazil/East')
-    job_queue.run_daily(weekly_ranking, days=(4), time=time(hour=17, minute=0, tzinfo=BR_Brasilia))
+    job_queue.run_daily(weekly_ranking, days=[4], time=time(hour=17, minute=0, tzinfo=BR_Brasilia))
 
 create_dispatchers()
 create_jobs()

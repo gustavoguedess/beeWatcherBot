@@ -271,8 +271,8 @@ def weekly_ranking(context: CallbackContext):
         else:
             text = ranking_text(ranking)
             imgPodium = beepodium.create_podium(*ranking[:3])
-            
             update_ranking(chat_id)
+            
             context.bot.send_photo(chat_id=chat_id, photo=imgPodium)
         context.bot.send_message(chat_id=chat_id, text=text)
         

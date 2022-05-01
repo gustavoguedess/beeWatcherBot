@@ -22,8 +22,9 @@ def put_place(podium, user, place:int):
     elif place == 3:
         pos = (1330,350)
     x,y = pos
-    img = open_img_from_url(user['avatar'])
-    podium.paste(img, (x,y), get_profile_mask(img.size))
+    if user['avatar']:
+        img = open_img_from_url(user['avatar'])
+        podium.paste(img, (x,y), get_profile_mask(img.size))
 
 def create_podium(user1, user2=None, user3=None):
     imgPodium = Image.open("img/podio.jpg")

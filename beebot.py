@@ -326,12 +326,10 @@ def create_dispatchers():
     dispatcher.add_handler(unknown_handler)
 
 def create_jobs():
-    from pytz import timezone
     from datetime import time 
     job_queue = updater.job_queue
 
-    BR_Brasilia = timezone('Brazil/East')
-    job_queue.run_daily(weekly_ranking, days=[4], time=time(hour=17, minute=0, tzinfo=BR_Brasilia))
+    job_queue.run_daily(weekly_ranking, days=[4], time=time(hour=20, minute=0)) #17h
 
 create_dispatchers()
 create_jobs()

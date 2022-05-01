@@ -11,14 +11,33 @@ class BeeCrawler:
         response = requests.get(url)
         soup = BeautifulSoup(response.text, 'html.parser')
         a_list = soup.select('div.search-user a')
-        users_code = [a['href'].split('/')[-1] for a in a_list]
-        return users_code
-    
-    def get_info(self, id):
+        users = []
+        for a in a_list:
+            user = {}
+            user['username'] = a.text
+            user['id'] = a['href'].split('/')[-1]
+            users.append(user)
+        return users
+
+    def get_id_from_username(self, username):
+        users = self.search_username(username)
+        for user in users:
+            if user['username'] == username:
+                return user['id']
+        return None
+        
+    def get_profile_info(self, id:str=None, username:str=None):
+        if id is None and username is None: return None
+        if id is None: id = self.get_id_from_username(username)
+        if id is None: return None
+        
+
         url = f'{self.url_base}/profile/{id}'
         response = requests.get(url)
+        if response.status_code != 200:
+            return None
+
         soup = BeautifulSoup(response.text, 'html.parser')
-        
         ul = soup.select('ul.pb-information li')
         user_info = {}
         user_info['username'] = soup.select_one('div.pb-username p a').text

@@ -3,10 +3,10 @@ import argparse
 
 arg_parser = argparse.ArgumentParser()
 arg_parser.add_argument('--debug', '-d', help='Debug', action='store_true', default=False)
-args = arg_parser.parse_args()
+config = arg_parser.parse_args()
 
 
-if not args.debug:
+if not config.debug:
     BEEBOT_TOKEN = os.getenv("BEEBOT_TOKEN")
 else:
     BEEBOT_TOKEN = os.getenv("BEEBOT_TOKEN_DEBUG")
@@ -63,7 +63,7 @@ def addprofile_command(update: Update, context: CallbackContext):
     fail = []
 
     for username in usernames:
-        user = get_profile(username)
+        user = beecrawler.get_profile_info(username=username)
         if user:
             if context.chat_data.get('profiles', False) == False:
                 context.chat_data['profiles'] = {}
@@ -90,16 +90,6 @@ def addprofile_command(update: Update, context: CallbackContext):
     
     context.bot.send_message(chat_id=update.effective_chat.id, text=text)
 
-def get_profile(username):
-    users_code = beecrawler.search_username(username)
-
-    if len(users_code) == 0 or len(users_code) > 1:
-        return None
-    else:
-        usercode = users_code[0]
-        user = beecrawler.get_info(usercode)
-        return user
-
 def rmprofile_command(update: Update, context: CallbackContext):
     usernames = list(map(str.lower, context.args))
     if len(usernames) == 0:
@@ -110,7 +100,7 @@ def rmprofile_command(update: Update, context: CallbackContext):
     fail = []
 
     for username in usernames:
-        user = get_profile(username)
+        user = beecrawler.get_profile_info(username=username)
         if user:
             if context.chat_data.get('profiles', False) == False:
                 context.chat_data['profiles'] = {}
@@ -256,7 +246,7 @@ def unknown_command(update: Update, context: CallbackContext):
 
 def set_command(update: Update, context: CallbackContext):
     username, property, value = context.args
-    user = get_profile(username)
+    user = beecrawler.get_profile_info(username=username)
     if user:
         if property == 'points':
             value = int(value)
@@ -264,6 +254,11 @@ def set_command(update: Update, context: CallbackContext):
         import json
         text = json.dumps(context.chat_data['profiles'][user['id']], indent=2)
         context.bot.send_message(chat_id=update.effective_chat.id, text=text)
+def get_command(update:Update, context:CallbackContext):
+    import json 
+    text = json.dumps(context.chat_data, indent=2)
+    context.bot.send_message(chat_id=update.effective_chat.id, text=text)
+
 
 def weekly_ranking(context: CallbackContext):
     from telegram.ext import ContextTypes, Dispatcher, CallbackContext
@@ -309,8 +304,11 @@ def create_dispatchers():
     problem_handler = CommandHandler(['problem', 'problems'], problem_command)
     dispatcher.add_handler(problem_handler)
 
-    set_handler = CommandHandler('debugset', set_command)
-    dispatcher.add_handler(set_handler)
+    if config.debug:
+        set_handler = CommandHandler('set', set_command)
+        dispatcher.add_handler(set_handler)
+        get_handler = CommandHandler('get', get_command)
+        dispatcher.add_handler(get_handler)
 
     stop_handler = CommandHandler('stop', stop_command)
     dispatcher.add_handler(stop_handler)

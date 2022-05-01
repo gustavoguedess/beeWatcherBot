@@ -6,7 +6,7 @@ class Test_Bee_Crawler_Search(unittest.TestCase):
     def test_search_unique_username(self):
         bee = BeeCrawler()
         resp = bee.search_username('mrgustavoip')
-        self.assertEqual(resp, ["16348"])
+        self.assertEqual(resp, [{'id': 16348, 'username': 'mrgustavoip'}])
     def test_search_generic_username(self):
         bee = BeeCrawler()
         resp = bee.search_username('gustavo')
@@ -18,10 +18,14 @@ class Test_Bee_Crawler_Search(unittest.TestCase):
     
 class Test_Bee_Crawler_Info(unittest.TestCase):
     bee = BeeCrawler()
-    resp = bee.get_info('16348')
+    resp = bee.get_profile_info(16348)
     def test_get_info_valid_username(self):
         self.assertEqual(self.resp['username'], 'mrgustavoip')
-    
+
+    def test_get_info_valid_generic_username(self):
+        resp = self.bee.get_profile_info(username='pedrolino')
+        self.assertEqual(resp['username'], 'pedrolino')
+
     def test_get_info_valid_university(self):
         self.assertEqual(self.resp['university'], 'UTFPR')
 

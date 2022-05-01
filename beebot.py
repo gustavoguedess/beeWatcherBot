@@ -150,9 +150,9 @@ def get_ranking(profiles):
         growth = new_points - old_points
         if growth != 0:
             profile = {
-                'username': user['username'],
-                'university': user['university'],
-                'avatar': user['avatar'],
+                'username': user_new['username'],
+                'university': user_new['university'],
+                'avatar': user_new['avatar'],
                 'old_points': old_points,
                 'new_points': new_points,
                 'growth': growth

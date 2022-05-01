@@ -60,7 +60,7 @@ class BeeCrawler:
                 users.append(user)
         return users
 
-    def get_problem(self, id_complete:str|int):
+    def get_problem(self, id_complete:str):
         id_complete = id_complete.replace('uri', 'bee')
 
         id = id_complete.replace('bee','')

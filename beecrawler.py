@@ -22,7 +22,7 @@ class BeeCrawler:
     def get_id_from_username(self, username):
         users = self.search_username(username)
         for user in users:
-            if user['username'] == username:
+            if user['username'].lower() == username.lower():
                 return user['id']
         return None
         

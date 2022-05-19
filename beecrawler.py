@@ -41,7 +41,8 @@ class BeeCrawler:
         ul = soup.select('ul.pb-information li')
         user_info = {}
         user_info['username'] = soup.select_one('div.pb-username p a').text
-        user_info['avatar'] = soup.select_one('div.pb-avatar img')['src']
+        div_photo = soup.select_one('div.perfil-photo')
+        user_info['avatar'] = re.findall(r'url\((.*)\)', div_photo['style'])[0]
 
         for li in ul:
             key, value = li.text.replace('\n','').strip().split(':')

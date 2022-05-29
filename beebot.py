@@ -275,7 +275,18 @@ def weekly_ranking(context: CallbackContext):
             
             context.bot.send_photo(chat_id=chat_id, photo=imgPodium)
         context.bot.send_message(chat_id=chat_id, text=text)
-        
+
+def podium(update: Update, context: CallbackContext):
+    print('podium test')
+    ranking = get_ranking(context.chat_data['profiles'])
+    if len(ranking) == 0:
+        text = '😴'
+    else:
+        text = ranking_text(ranking)
+        imgPodium = beepodium.create_podium(*ranking[:3])
+        context.bot.send_photo(chat_id=update.effective_chat.id, photo=imgPodium)
+    context.bot.send_message(chat_id=update.effective_chat.id, text=text)
+
 def test_command(update: Update, context: CallbackContext):
     print(update.effective_chat.id)
     if update.effective_chat.id == 262931805:
@@ -314,6 +325,8 @@ def create_dispatchers():
         dispatcher.add_handler(set_handler)
         get_handler = CommandHandler('get', get_command)
         dispatcher.add_handler(get_handler)
+        podium_handler = CommandHandler('podium', podium)
+        dispatcher.add_handler(podium_handler)
 
     test_handler = CommandHandler('test', test_command)
     dispatcher.add_handler(test_handler)

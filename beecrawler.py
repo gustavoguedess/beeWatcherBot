@@ -42,7 +42,10 @@ class BeeCrawler:
         user_info = {}
         user_info['username'] = soup.select_one('div.pb-username p a').text
         div_photo = soup.select_one('div.perfil-photo')
-        user_info['avatar'] = re.findall(r'url\((.*)\)', div_photo['style'])[0]
+        try:
+            user_info['avatar'] = re.findall(r'url\((.*)\)', div_photo['style'])[0]
+        except:
+            user_info['avatar'] = requests.get('https://dog.ceo/api/breeds/image/random').json()['message']
 
         for li in ul:
             key, value = li.text.replace('\n','').strip().split(':')
